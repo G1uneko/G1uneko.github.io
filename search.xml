@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>2021羊城杯misc</title>
+    <url>/2021/09/12/2021ycb/</url>
+    <content><![CDATA[<h3 id="misc520"><a href="#misc520" class="headerlink" title="misc520"></a>misc520</h3><p><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011720359.png"><br>时间匆忙就做了一题还没有提交…<br>是一个经典的usb鼠标流量分析题了<br>下载题目拿到520个套娃zip，直接7z加连点器提取flag.png<br>然后放到Stegsolve.jar看到bgr通道里面有一个zip<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011720358.png"><br>提取出来发现加密拿去爆破password：12345<br>又拿到pacp，打开看看是一个鼠标流量就用kali的工具提取一下数据<br>(USB协议的数据部分在Leftover Capture Data域之中，在Mac和Linux下可以用tshark命令可以将 leftover capture data单独提取出来 命令如下：</p>
+<figure class="highlight stylus"><table><tr><td class="code"><pre><span class="line">tshark -r usb1<span class="selector-class">.pcapng</span> -T fields -e usb<span class="selector-class">.capdata</span> &gt; usbdata.txt</span><br></pre></td></tr></table></figure>
+<p>)</p>
+<span id="more"></span>
+<p><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011720360.png"><br>发现前面有一堆空行和后面也有空行于是去掉空行：</p>
+<figure class="highlight sas"><table><tr><td class="code"><pre><span class="line">cat <span class="keyword">filename</span> | sed -e <span class="string">&#x27;/^$/d&#x27;</span> &gt; <span class="keyword">filename</span></span><br></pre></td></tr></table></figure>
+<p>然后</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> re</span><br><span class="line">file = <span class="built_in">open</span>(<span class="string">&quot;output.txt&quot;</span>,<span class="string">&#x27;w&#x27;</span>)</span><br><span class="line"><span class="keyword">with</span> <span class="built_in">open</span>(<span class="string">&#x27;usb.txt&#x27;</span>, <span class="string">&#x27;r&#x27;</span>) <span class="keyword">as</span> lines:</span><br><span class="line">    <span class="keyword">for</span> line <span class="keyword">in</span> lines:</span><br><span class="line">        result = re.sub(<span class="string">r&quot;(?&lt;=\w)(?=(?:\w\w)+$)&quot;</span>, <span class="string">&quot;:&quot;</span>, line)</span><br><span class="line">        file.write(result)</span><br></pre></td></tr></table></figure>
+<p>变成这种形式<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011720361.png"><br>用大佬的脚本</p>
+<figure class="highlight apache"><table><tr><td class="code"><pre><span class="line"><span class="attribute">nums</span> =<span class="meta"> []</span></span><br><span class="line"><span class="attribute">keys</span> = open(&#x27;output.txt&#x27;,&#x27;r&#x27;)</span><br><span class="line"><span class="attribute">posx</span> = <span class="number">0</span></span><br><span class="line"><span class="attribute">posy</span> = <span class="number">0</span></span><br><span class="line"><span class="attribute">for</span> line in keys:</span><br><span class="line">    <span class="attribute">if</span> len(line) != <span class="number">12</span> :</span><br><span class="line">        <span class="attribute">continue</span></span><br><span class="line">    <span class="attribute">x</span> = int(line[<span class="number">3</span>:<span class="number">5</span>],<span class="number">16</span>)</span><br><span class="line">    <span class="attribute">y</span> = int(line[<span class="number">6</span>:<span class="number">8</span>],<span class="number">16</span>)</span><br><span class="line">    <span class="attribute">if</span> x &gt; <span class="number">127</span> :</span><br><span class="line">        <span class="attribute">x</span> -= <span class="number">256</span></span><br><span class="line">    <span class="attribute">if</span> y &gt; <span class="number">127</span> :</span><br><span class="line">        <span class="attribute">y</span> -= <span class="number">256</span></span><br><span class="line">    <span class="attribute">posx</span> += x</span><br><span class="line">    <span class="attribute">posy</span> += y</span><br><span class="line">    <span class="attribute">btn_flag</span> = int(line[<span class="number">0</span>:<span class="number">2</span>],<span class="number">16</span>)  # <span class="number">1</span> for left , <span class="number">2</span> for right , <span class="number">0</span> for nothing</span><br><span class="line">    <span class="attribute">if</span> btn_flag == <span class="number">1</span> :</span><br><span class="line">        <span class="attribute">print</span> posx , posy       </span><br><span class="line">    <span class="attribute">keys</span>.close()</span><br></pre></td></tr></table></figure>
+<p>搞出坐标画图发现是反的，改一下y轴坐标为负即</p>
+<figure class="highlight apache"><table><tr><td class="code"><pre><span class="line"><span class="attribute">nums</span> =<span class="meta"> []</span></span><br><span class="line"><span class="attribute">keys</span> = open(&#x27;output.txt&#x27;,&#x27;r&#x27;)</span><br><span class="line"><span class="attribute">posx</span> = <span class="number">0</span></span><br><span class="line"><span class="attribute">posy</span> = <span class="number">0</span></span><br><span class="line"><span class="attribute">for</span> line in keys:</span><br><span class="line">    <span class="attribute">if</span> len(line) != <span class="number">12</span> :</span><br><span class="line">        <span class="attribute">continue</span></span><br><span class="line">    <span class="attribute">x</span> = int(line[<span class="number">3</span>:<span class="number">5</span>],<span class="number">16</span>)</span><br><span class="line">    <span class="attribute">y</span> = int(line[<span class="number">6</span>:<span class="number">8</span>],<span class="number">16</span>)</span><br><span class="line">    <span class="attribute">if</span> x &gt; <span class="number">127</span> :</span><br><span class="line">        <span class="attribute">x</span> -= <span class="number">256</span></span><br><span class="line">    <span class="attribute">if</span> y &gt; <span class="number">127</span> :</span><br><span class="line">        <span class="attribute">y</span> -= <span class="number">256</span></span><br><span class="line">    <span class="attribute">posx</span> += x</span><br><span class="line">    <span class="attribute">posy</span> += y</span><br><span class="line">    <span class="attribute">btn_flag</span> = int(line[<span class="number">0</span>:<span class="number">2</span>],<span class="number">16</span>)  # <span class="number">1</span> for left , <span class="number">2</span> for right , <span class="number">0</span> for nothing</span><br><span class="line">    <span class="attribute">if</span> btn_flag == <span class="number">1</span> :</span><br><span class="line">        <span class="attribute">print</span> posx , -posy</span><br><span class="line"><span class="attribute">keys</span>.close()</span><br></pre></td></tr></table></figure>
+<p>拿去py2一下得出坐标然后kali下gnupolt和plot “loacl.txt”，得flag</p>
+]]></content>
+      <tags>
+        <tag>ctf</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ctf001</title>
+    <url>/2020/05/23/ctf01/</url>
+    <content><![CDATA[<p>又到了周末，上网课是真的难受，今天就写写前几天做的题吧(由于我太菜，只做了几道misc)。（图太多了，懒得转移图床QAQ）</p>
+<h3 id="misc1"><a href="#misc1" class="headerlink" title="misc1"></a>misc1</h3><p><img data-src="img/ctf01/misc101.png" alt="misc1"><br>下载题目得到一个zip，解压得到一张图片。<br><img data-src="img/ctf01/misc102.png" alt="misc1"><br>先用010打开一下，发现尾部之后有一串base32编码。<br><img data-src="img/ctf01/misc103.png" alt="misc1"></p>
+<span id="more"></span>
+<p>拿去在线解码，得到这个:<br><img data-src="img/ctf01/misc104.png" alt="misc1"><br>发现是又是一串奇怪的字符，emmm，也可能是16进制，然后想想常用的文件的头和尾，好像也不是，然后看到了尾部的o405感觉和zip的头部504b相似。<br>然后拿去在线字符翻转。<br><img data-src="img/ctf01/misc105.png" alt="misc1"><br>思考是不是zip的文件然后经过了加密，然后就找到了rot13<br><img data-src="img/ctf01/misc106.png" alt="misc1"><br>拿去在线解密，复制，另存为zip文件，然后解压…<br><img data-src="img/ctf01/misc107.png" alt="misc1"><br>然后….加密了？<br><img data-src="img/ctf01/misc108.png" alt="misc1"><br><img data-src="img/ctf01/misc108.jpg" alt="misc1"><br>也没有密码，先看看是不是文件伪加密。<br><img data-src="img/ctf01/misc109.png" alt="misc1"><br>发现伪加密，然后解压得到flag。<br><img data-src="img/ctf01/misc100.png" alt="misc1">  </p>
+<hr>
+<h3 id="misc2"><a href="#misc2" class="headerlink" title="misc2"></a>misc2</h3><p>又是一张图片<br><img data-src="img/ctf01/misc200.png" alt="misc2"><br>发现图片有500kb大小，里面会不会藏东西，拿去kali扫描一下，无获……<br><img data-src="img/ctf01/misc201.png" alt="misc2"><br>于是只好看rgb通道有没有什么收获<br><img data-src="img/ctf01/misc202.png" alt="misc2"><br>发现一张二维码，嘻嘻<br><img data-src="img/ctf01/misc203.png" alt="misc2"><br>但是扫描后又是奇怪的字符估计又是hex。<br>看到是pyc的头部…<br>然后拿去在线工具运行。<br><img data-src="img/ctf01/misc204.png" alt="misc2"><br>在python运行一下得到flag。</p>
+<hr>
+<h3 id="misc3"><a href="#misc3" class="headerlink" title="misc3"></a>misc3</h3><p>一个小滑稽<br><img data-src="img/ctf01/misc300.png" alt="misc3"><br>先用010打开，发现jpg尾部之后还有东西。<br><img data-src="img/ctf01/misc301.png" alt="misc3"><br>于是想想会不会后面藏了什么文件，继续往下看，看到了png的头89504E47<br><img data-src="img/ctf01/misc302.png" alt="misc3"><br>就像这样子<br><img data-src="img/ctf01/misc303.jpg" alt="misc3"><br>然后就写一个小小的py脚本:<br>    flie = ‘a.txt’<br>    with open(flie,’r+’) as f:<br>        r = f.read()<br>        list1 = r.split(‘ ‘)<br>    with open(‘xie.txt’,’w’) as x:<br>        yaor = ‘’<br>        for i in range(len(list1)):<br>            yaor = list1[-1] + ‘ ‘<br>            list1.pop(-1)<br>            x.write(yaor)<br>然后复制另存为png就完事了<br><img data-src="img/ctf01/misc303.png" alt="misc3"></p>
+<hr>
+<h3 id="misc4"><a href="#misc4" class="headerlink" title="misc4"></a>misc4</h3><p>emmm，是一个pcap文件，流量分析还不是还会，顺便学习好了。<br><img data-src="img/ctf01/misc400.png" alt="misc4"><br>过滤一下http协议<br><img data-src="img/ctf01/misc401.png" alt="misc4"><br>看见一个md5加密和gzcompress()函数<br><img data-src="img/ctf01/misc402.png" alt="misc4"><br>于是md5拿去在线网站撞库，得到cometohackme，无果…<br>继续看看剩下的，http追踪流发现一串字符串，感觉是base64的密文，拿去php解密<br><img data-src="img/ctf01/misc403.png" alt="misc4"><br><img data-src="img/ctf01/misc405.png" alt="misc4"><br>得flag</p>
+<hr>
+<h3 id="misc5"><a href="#misc5" class="headerlink" title="misc5"></a>misc5</h3><p>是一个图<br><img data-src="img/ctf01/misc500.png" alt="misc5"><br>有300kb了，再一次拿到kali扫描<br><img data-src="img/ctf01/misc501.png" alt="misc5"><br>再一次无果<br><img data-src="img/ctf01/misc502.jpg" alt="misc5"><br>(可恶….是幻术吗…明明感觉是这样子…怎么会再一次…大意了)<br>然后看看rgb通道，没有什么东西。考虑lsb隐写，然后得到zip的hex<br><img data-src="img/ctf01/misc502.png" alt="misc5"><br>文件损坏…拿WinRAR修复一下<br><img data-src="img/ctf01/misc503.png" alt="misc5"><br>得到一个未知文件，用010打开是一个elf文件，要用kali打开<br><img data-src="img/ctf01/misc507.png" alt="misc5"><br><img data-src="img/ctf01/misc504.png" alt="misc5"><br><img data-src="img/ctf01/misc505.png" alt="misc5"><br>sudo chmon 755 1 给一个限权<br><img data-src="img/ctf01/misc506.png" alt="misc5"></p>
+]]></content>
+      <tags>
+        <tag>ctf</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ctf02</title>
+    <url>/2020/10/05/ctf02/</url>
+    <content><![CDATA[<h3 id="关于8月的ctfwp-D"><a href="#关于8月的ctfwp-D" class="headerlink" title="关于8月的ctfwp :D"></a>关于8月的ctfwp :D</h3><p>2020ciscn’s wp: <a href="https://www.gem-love.com/ctf/2569.html">https://www.gem-love.com/ctf/2569.html</a><br>                <a href="https://www.gksec.com/amp/CISCN2020_Online_WriteUp.html">https://www.gksec.com/amp/CISCN2020_Online_WriteUp.html</a><br>2020gactf’s wp:<a href="https://mp.weixin.qq.com/s/7POuTp37wzY7bS3R-Fldog">https://mp.weixin.qq.com/s/7POuTp37wzY7bS3R-Fldog</a><br>                misc: <a href="https://mp.weixin.qq.com/s/TXXyzswABUv4cLDOw5SdI">https://mp.weixin.qq.com/s/TXXyzswABUv4cLDOw5SdI</a><br>                Crypto: <a href="https://mp.weixin.qq.com/s/c4bK2R_n_r5q_7rSidEuTg">https://mp.weixin.qq.com/s/c4bK2R_n_r5q_7rSidEuTg</a><br>                WEB: <a href="https://mp.weixin.qq.com/s/H0-imfruCTIXtMG16a9CIA">https://mp.weixin.qq.com/s/H0-imfruCTIXtMG16a9CIA</a><br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011728472.gif"><br>钓鱼城杯量子加密misc题：</p>
+<span id="more"></span>
+
+<p><strong>《量子加密》writeup by @xmcp</strong></p>
+<p>本题有跑脚本的环节，下文所述的运行时间在一台i 7 - 10510U (25W) 笔记本电脑上测出。</p>
+<p><strong>解题过程分为三个部分： 1 ) 解密ZIP， 2 ) 分析流量， 3 ) 破解口令。</strong></p>
+<h1 id="解密ZIP"><a href="#解密ZIP" class="headerlink" title="解密ZIP"></a>解密ZIP</h1><h2 id="首先打开压缩包，发现有密码保护，看到注释："><a href="#首先打开压缩包，发现有密码保护，看到注释：" class="headerlink" title="首先打开压缩包，发现有密码保护，看到注释："></a>首先打开压缩包，发现有密码保护，看到注释：</h2><figure class="highlight livecodeserver"><table><tr><td class="code"><pre><span class="line">Password is longer than <span class="number">16</span> <span class="keyword">bytes</span>, <span class="keyword">and</span> includes <span class="keyword">at</span> least <span class="literal">one</span> <span class="built_in">number</span> <span class="keyword">and</span> <span class="literal">one</span> uppercase letter.</span><br><span class="line">Feel free <span class="built_in">to</span> crack <span class="keyword">it</span> <span class="keyword">if</span> you can, probably <span class="keyword">with</span> your high-performance quantum computer :)</span><br></pre></td></tr></table></figure>
+<p>说明难以暴力破解。</p>
+<p>压缩包里面有“capture.pcapng”和“hint_for_capture.txt”，压缩算法都是Store，这很奇怪，因<br>为pcapng并非十分紧密的格式，压缩软件没有理由不压缩它。</p>
+<p>因此我们考虑ZIP明文攻击，只需要知道pcapng中至少 12 个字节（其中至少 8 个字节连<br>续）的内容即可破解。</p>
+<p>上网搜索<a href="https://pcapng.github.io/pcapng/">pcapng的文件头格式：</a></p>
+<p><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011728473.png"></p>
+<p>红色部分是固定的：Block Type始终为 0 A0D0D0A；Block Total Length是小端存储的Header<br>长度，显然不会超过64KB，所以高两位都是 00 ；Byte-Order Magic在小端机器上始终为<br>4 D3C2B1A；Major Version目前只有 0100 ；Minor Version目前只有 0000 。</p>
+<p>这样可以知道文件中的 4 + 10 字节内容，满足明文攻击的要求。</p>
+<p>其实蓝色部分也是可以猜出来的：Section Length是可选字段，大多数软件（比如WireShark）<br>在保存pcapng时会写入- 1 （即 8 个字节的FF）。</p>
+<h2 id="因此，把蓝色部分也算上的话，我们知道文件中的4-18-字节内容，对明文攻击绰绰有余了。"><a href="#因此，把蓝色部分也算上的话，我们知道文件中的4-18-字节内容，对明文攻击绰绰有余了。" class="headerlink" title="因此，把蓝色部分也算上的话，我们知道文件中的4+ 18 字节内容，对明文攻击绰绰有余了。"></a>因此，把蓝色部分也算上的话，我们知道文件中的4+ 18 字节内容，对明文攻击绰绰有余了。</h2><h2 id="为了严谨起见，我们只使用十分确定的红色部分进行明文攻击。"><a href="#为了严谨起见，我们只使用十分确定的红色部分进行明文攻击。" class="headerlink" title="为了严谨起见，我们只使用十分确定的红色部分进行明文攻击。"></a>为了严谨起见，我们只使用十分确定的红色部分进行明文攻击。</h2><p>注意到AZPR不支持明文分段的ZIP明文攻击，我们使用<a href="https://github.com/kimci86/bkcrack">bkcrack</a>.</p>
+<p>在压缩包中提取出密文capture.pcapng.enc（ 888832 字节）和hint_for_capture.txt.enc（ 48<br>字节），把已知的 10 字节明文保存为capture.pcapng.plain。运行下面的命令进行攻击：<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011728474.png"></p>
+<h2 id="运行-29-分钟后得到秘钥。运行下面的命令解密文件："><a href="#运行-29-分钟后得到秘钥。运行下面的命令解密文件：" class="headerlink" title="运行 29 分钟后得到秘钥。运行下面的命令解密文件："></a>运行 29 分钟后得到秘钥。运行下面的命令解密文件：</h2><p><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011728475.png"></p>
+<h1 id="分析流量"><a href="#分析流量" class="headerlink" title="分析流量"></a>分析流量</h1><p>打开pcap看到上千个HTTP流量，用Fiddler查看发现全都是对192.168.142.138:8080的请<br>求，User-Agent为sqlmap/1.3.5.105#dev，可以判断是sqlmap自动对服务器进行SQL注入<br>的过程。<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011728476.png"></p>
+<p>具体观察请求参数和响应，发现sqlmap在尝试盲注flags表的flag字段，请求使用了HEAD<br>方法（对应sqlmap的–null-connection参数），而且请求顺序是乱的（对应sqlmap的–<br>threads参数）。</p>
+<p>根据前几个GET的响应可以判断出响应头Content-Length为 5 表示“error”，为 2 表示“ok”。<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011728477.png"></p>
+<p>例如上述请求在判断flag的第 32 位字符是否大于 0 x 65 ，返回 5 表明结果是否定的。</p>
+<p>将所有HTTP请求导出成文本文件：<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011728478.png"></p>
+<p>然后编写脚本获得flag内容：<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011728479.png"></p>
+<p>根据hint_for_capture.txt的提示，得到的内容经过了base85编码。<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011728480.png"><br>将脚本输出base 85 解码得到：</p>
+<figure class="highlight isbl"><table><tr><td class="code"><pre><span class="line"><span class="variable">flag</span> <span class="variable">is</span> <span class="function"><span class="title">md5</span>(<span class="string">&quot;Sq1it3&quot;</span>+压缩包密码)</span></span><br><span class="line"><span class="variable">Hint</span>: 密码是一个身份证号，且出生年份恰有两个质因子</span><br></pre></td></tr></table></figure>
+<h1 id="破解口令"><a href="#破解口令" class="headerlink" title="破解口令"></a>破解口令</h1><p>我们需要破解压缩包口令，考虑John the Ripper。首先用zip2john转换一下：<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011728481.png"></p>
+<p>其中hint_for_capture.txt是压缩包中的纯ASCII文件而且比较小，用来加速破解过程。</p>
+<p>已经知道压缩包密码是合法的身份证号。由于压缩包注释提到密码包括大写字母，可以推出<br>身份证尾号为X。通过分解质因数得到可行的出生年份列表：<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011728482.png"></p>
+<h2 id="我们分析一下身份证的格式："><a href="#我们分析一下身份证的格式：" class="headerlink" title="我们分析一下身份证的格式："></a>我们分析一下身份证的格式：</h2><h2 id="⚫-前-6-位是区号，上网搜一下可以得到区号列表，全国的合法区号不超过-4000-个。"><a href="#⚫-前-6-位是区号，上网搜一下可以得到区号列表，全国的合法区号不超过-4000-个。" class="headerlink" title="⚫ 前 6 位是区号，上网搜一下可以得到区号列表，全国的合法区号不超过 4000 个。"></a>⚫ 前 6 位是区号，上网搜一下可以得到区号列表，全国的合法区号不超过 4000 个。</h2><h2 id="⚫-然后-4-位是出生年份，我们从-2020-往下枚举。"><a href="#⚫-然后-4-位是出生年份，我们从-2020-往下枚举。" class="headerlink" title="⚫ 然后 4 位是出生年份，我们从 2020 往下枚举。"></a>⚫ 然后 4 位是出生年份，我们从 2020 往下枚举。</h2><h2 id="⚫-然后-4-位是出生月日，不超过-366-个。"><a href="#⚫-然后-4-位是出生月日，不超过-366-个。" class="headerlink" title="⚫ 然后 4 位是出生月日，不超过 366 个。"></a>⚫ 然后 4 位是出生月日，不超过 366 个。</h2><h2 id="⚫-然后-3-位是当天的序号，只需要枚举两位，最后一位可以利用校验码唯一确定。"><a href="#⚫-然后-3-位是当天的序号，只需要枚举两位，最后一位可以利用校验码唯一确定。" class="headerlink" title="⚫ 然后 3 位是当天的序号，只需要枚举两位，最后一位可以利用校验码唯一确定。"></a>⚫ 然后 3 位是当天的序号，只需要枚举两位，最后一位可以利用校验码唯一确定。</h2><h2 id="⚫-最后-1-位是校验码，固定为X。"><a href="#⚫-最后-1-位是校验码，固定为X。" class="headerlink" title="⚫ 最后 1 位是校验码，固定为X。"></a>⚫ 最后 1 位是校验码，固定为X。</h2><h2 id="这样一来，密码的值域降低到了-1010-量级，可以进行破解了。"><a href="#这样一来，密码的值域降低到了-1010-量级，可以进行破解了。" class="headerlink" title="这样一来，密码的值域降低到了 1010 量级，可以进行破解了。"></a>这样一来，密码的值域降低到了 1010 量级，可以进行破解了。</h2><p>首先我们在网上搞一份身份证区号列表，存为id_prefix.txt，然后用C++写一个枚举合法身<br>份证号的代码（编译选项-Ofast -march=native，不用Python因为太慢了）。<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011728483.png"></p>
+<p>上面这个代码的命令行参数是年份，将把该年的所有尾号为X的合法身份证号输出到stdout。</p>
+<p>调用该程序生成字典，然后用john破解。脚本如下：<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011728484.png"></p>
+<h2 id="运行-4-分钟后得到密码："><a href="#运行-4-分钟后得到密码：" class="headerlink" title="运行 4 分钟后得到密码："></a>运行 4 分钟后得到密码：</h2><p><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011728485.png"></p>
+<p>计算md5(“Sq1it332070119840810108X”)即得到flag。</p>
+]]></content>
+      <tags>
+        <tag>ctf</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ctf03</title>
+    <url>/2020/10/13/ctf03/</url>
+    <content><![CDATA[<h3 id="10-13的做题小记录"><a href="#10-13的做题小记录" class="headerlink" title="10.13的做题小记录"></a>10.13的做题小记录</h3><h5 id="1-刷新过的图片"><a href="#1-刷新过的图片" class="headerlink" title="1.刷新过的图片"></a>1.刷新过的图片</h5><p>这里下载题目得到一张图片，hex观察无果，其他的隐写也无果。考虑题目的提示：刷新的按键一般是F5。故考虑F5隐写。<br>F5刷新隐写，原理文献：<a href="https://wenku.baidu.com/view/c9150e29b4daa58da0114a39.html">https://wenku.baidu.com/view/c9150e29b4daa58da0114a39.html</a>,<br>利用工具:<a href="https://github.com/matthewgao/F5-steganography%EF%BC%8C">https://github.com/matthewgao/F5-steganography，</a><br>使用命令：java Extract 123456.jpg -p [password]/[空]，在output.txt找解密后的文本，得flag。</p>
+<span id="more"></span>
+<h5 id="2-snake"><a href="#2-snake" class="headerlink" title="2.snake"></a>2.snake</h5><p>下载后又是一张jpg,观察图片hex发现熟悉的504B，提取zip后得到两个文件，一个key，一个cipher，打开key，有一串base64字符，解码之后，得到：</p>
+<figure class="highlight applescript"><table><tr><td class="code"><pre><span class="line">What <span class="keyword">is</span> Nicki Minaj&#x27;s favorite song <span class="keyword">that</span> refers <span class="keyword">to</span> snakes?</span><br></pre></td></tr></table></figure>
+<p>百度一波得到key：anacondam,对于蛇这个名词，在英语中还有一个翻译：Serpent。<br>Serpent是一个加密算法，关于算法的更多详细信息参考<a href="https://blog.csdn.net/douqingl/article/details/50256931">博客</a>,<br>找一个<a href="http://serpent.online-domain-tools.com/">在线网站</a>ecb模式输入key得到flag。</p>
+<h5 id="3-梅花香之苦寒来"><a href="#3-梅花香之苦寒来" class="headerlink" title="3.梅花香之苦寒来"></a>3.梅花香之苦寒来</h5><p>下载又又是图片，emmmm，查看hex看到jpg文件尾发现大量字符串<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011734744.png"><br>不难判断这是[^16进制],[^16进制]:一般用数字0到9和字母A到F（或a<del>f）表示，其中:A</del>F表示10~15，这些称作十六进制数字。<br>一个字节一组转ascii码</p>
+<figure class="highlight stylus"><table><tr><td class="code"><pre><span class="line">with <span class="built_in">open</span>(<span class="string">&#x27;hex.txt&#x27;</span>,<span class="string">&#x27;r&#x27;</span>) as h:</span><br><span class="line">    h=h<span class="selector-class">.read</span>()</span><br><span class="line">j = open (<span class="string">&#x27;ascii.txt&#x27;</span>,<span class="string">&#x27;w&#x27;</span>)</span><br><span class="line"></span><br><span class="line">tem=<span class="string">&#x27;&#x27;</span></span><br><span class="line"><span class="keyword">for</span> <span class="selector-tag">i</span> <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>,<span class="built_in">len</span>(h),<span class="number">2</span>):</span><br><span class="line">    tem=<span class="string">&#x27;0x&#x27;</span>+h<span class="selector-attr">[i]</span>+h<span class="selector-attr">[i+1]</span></span><br><span class="line">    tem=<span class="built_in">int</span>(tem,base=<span class="number">16</span>)</span><br><span class="line">    j<span class="selector-class">.write</span>(<span class="built_in">chr</span>(tem))</span><br></pre></td></tr></table></figure>
+<p>得到<img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011734745.png"><br>好多好多的坐标，<br>使用gnuplot工具绘图，安装：<br>输入：apt-get install gnuplot，然后输入：gnuplot 就可以打开了<br>但是打开之后并不能良好的使用，会报错：Terminal type set to ‘unknown’<br>因此需要安装多余的依赖包，输入：apt-get install gnuplot-x11<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011734746.png"><br>但是gnuplot识别的坐标为x y以空格作为分隔，所以用脚本让坐标变成gnuplot可以识别的坐标</p>
+<figure class="highlight stylus"><table><tr><td class="code"><pre><span class="line">with <span class="built_in">open</span>(<span class="string">&#x27;ascii.txt&#x27;</span>,<span class="string">&#x27;r&#x27;</span>)as <span class="selector-tag">a</span>:</span><br><span class="line">    a=<span class="selector-tag">a</span><span class="selector-class">.read</span>()</span><br><span class="line"><span class="selector-tag">p</span> = <span class="built_in">open</span>(<span class="string">&quot;output.txt&quot;</span>,<span class="string">&#x27;w&#x27;</span>)</span><br><span class="line">a=<span class="selector-tag">a</span><span class="selector-class">.split</span>()</span><br><span class="line">tem=<span class="string">&#x27;&#x27;</span></span><br><span class="line"><span class="keyword">for</span> <span class="selector-tag">i</span> <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>,<span class="built_in">len</span>(a)):</span><br><span class="line">    tem=<span class="selector-tag">a</span><span class="selector-attr">[i]</span></span><br><span class="line">    tem=tem<span class="selector-class">.lstrip</span>(<span class="string">&#x27;(&#x27;</span>)</span><br><span class="line">    tem=tem<span class="selector-class">.rstrip</span>(<span class="string">&#x27;)&#x27;</span>)</span><br><span class="line">    <span class="keyword">for</span> j <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>,<span class="built_in">len</span>(tem)):</span><br><span class="line">        <span class="keyword">if</span> tem<span class="selector-attr">[j]</span>==<span class="string">&#x27;,&#x27;</span>:</span><br><span class="line">            tem=tem<span class="selector-attr">[:j]</span>+<span class="string">&#x27; &#x27;</span>+tem<span class="selector-attr">[j+1:]</span></span><br><span class="line">    <span class="selector-tag">p</span><span class="selector-class">.write</span>(tem)</span><br><span class="line">    <span class="selector-tag">p</span><span class="selector-class">.write</span>(<span class="string">&quot;\n&quot;</span>)</span><br></pre></td></tr></table></figure>
+<p>最终<img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011734747.png"><br>kali下在output目录下gnuplot: “plot output.txt”<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011734748.png"></p>
+<h5 id="BJDCTF-2nd-圣火昭昭-y1ng"><a href="#BJDCTF-2nd-圣火昭昭-y1ng" class="headerlink" title="[BJDCTF 2nd]圣火昭昭-y1ng"></a>[BJDCTF 2nd]圣火昭昭-y1ng</h5><p>下载zip又是一张图片，右键查看属性备注有一个新约佛论禅加密<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011734749.png"><br>解密得到gemlove<br>在看题目提示<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011734750.png"><br>猜测出题人使用了outguess工具隐写文件<br>工具下载：<a href="https://github.com/crorvick/outguess">https://github.com/crorvick/outguess</a><br>下载源文件：git clone <a href="https://github.com/crorvick/outguess">https://github.com/crorvick/outguess</a><br>kali下执行命令./configure &amp;&amp; make &amp;&amp; make install 进行编译及安装。<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011734751.png"><br>安装成功！！！（其实我挺害怕报错的=D）<br>使用命令：outguess -k ‘gemlove’ -r ./sheng_huo_zhao_zhao.jpg flag.txt<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011734752.png"></p>
+<h3 id="tips"><a href="#tips" class="headerlink" title="tips:"></a>tips:</h3><h4 id="⚫-“-gt-”这是brainfuck代码，使用在线执行网站运行即可得到明文"><a href="#⚫-“-gt-”这是brainfuck代码，使用在线执行网站运行即可得到明文" class="headerlink" title="⚫ “++.&gt;++++”这是brainfuck代码，使用在线执行网站运行即可得到明文"></a>⚫ “++.&gt;++++”这是brainfuck代码，使用<a href="http://bf.doleczek.pl/">在线执行网站</a>运行即可得到明文</h4><h4 id="⚫-emoji-加密在线网站key为emoji，或者网站https-github-com-mozilla-codemoji下载源码"><a href="#⚫-emoji-加密在线网站key为emoji，或者网站https-github-com-mozilla-codemoji下载源码" class="headerlink" title="⚫ emoji 加密在线网站key为emoji，或者网站https://github.com/mozilla/codemoji下载源码"></a>⚫ emoji 加密<a href="http://taqini.space/codemoji/#/encrypt">在线网站</a>key为emoji，或者网站<a href="https://github.com/mozilla/codemoji%E4%B8%8B%E8%BD%BD%E6%BA%90%E7%A0%81">https://github.com/mozilla/codemoji下载源码</a></h4><h4 id="⚫-base64可以转图片"><a href="#⚫-base64可以转图片" class="headerlink" title="⚫ base64可以转图片"></a>⚫ base64可以转<a href="https://the-x.cn/base64">图片</a></h4><h4 id="⚫-ook也是一个加密密文-在线网站"><a href="#⚫-ook也是一个加密密文-在线网站" class="headerlink" title="⚫ ook也是一个加密密文,在线网站"></a>⚫ ook也是一个加密密文,<a href="https://www.splitbrain.org/services/ook">在线网站</a></h4><h4 id="⚫-“佛曰”为与佛论禅加密，”新佛曰”为新约佛论禅"><a href="#⚫-“佛曰”为与佛论禅加密，”新佛曰”为新约佛论禅" class="headerlink" title="⚫ “佛曰”为与佛论禅加密，”新佛曰”为新约佛论禅"></a>⚫ “佛曰”为<a href="http://www.keyfc.net/bbs/tools/tudoucode.aspx">与佛论禅</a>加密，”新佛曰”为<a href="http://hi.pcmoe.net/buddha.html">新约佛论禅</a></h4><h4 id="⚫-识别outguess和steghide隐写的方法：（待验证）”password”的密匙偏向于steghide-”key”的密匙偏向于outguess，主要看题目有没有提示工具的关键名字如：”guess”，”hide”"><a href="#⚫-识别outguess和steghide隐写的方法：（待验证）”password”的密匙偏向于steghide-”key”的密匙偏向于outguess，主要看题目有没有提示工具的关键名字如：”guess”，”hide”" class="headerlink" title="⚫ 识别outguess和steghide隐写的方法：（待验证）”password”的密匙偏向于steghide,”key”的密匙偏向于outguess，主要看题目有没有提示工具的关键名字如：”guess”，”hide”"></a>⚫ 识别outguess和steghide隐写的方法：（待验证）”password”的密匙偏向于steghide,”key”的密匙偏向于outguess，主要看题目有没有提示工具的关键名字如：”guess”，”hide”</h4><h4 id="⚫-another："><a href="#⚫-another：" class="headerlink" title="⚫ another："></a>⚫ another：</h4><p><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011734753.png"><br>隐写的还有一种JPG隐写的方法——使用jphhs05工具来载入数据<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308011734754.png"></p>
+<p>end…</p>
+]]></content>
+      <tags>
+        <tag>ctf</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>一个简易的ip代理池</title>
+    <url>/2020/05/08/ip_daili/</url>
+    <content><![CDATA[<p>用py写了一个简单的ip代理池，源码如下:</p>
+<span id="more"></span>
+<h5 id="从xici爬取ip"><a href="#从xici爬取ip" class="headerlink" title="从xici爬取ip"></a>从xici爬取ip</h5><p>tip: 需要在目录下创建HTTPS_ip.txt和HTTP_ip.txt和一个enable_ip.txt<br>    # -<em>- coding: utf-8 -</em>-</p>
+<pre><code>from bs4 import BeautifulSoup
+import requests
+import os
+
+def get_ip_list(url):
+    headers = &#123;&#39;Accept&#39;: &#39;text/html, application/xhtml+xml, image/jxr, */*&#39;,
+            &#39;Accept - Encoding&#39;:&#39;gzip, deflate&#39;,
+            &#39;Accept-Language&#39;:&#39;zh-Hans-CN, zh-Hans; q=0.5&#39;,
+            &#39;Connection&#39;:&#39;Keep-Alive&#39;,
+            &#39;Host&#39;:&#39;zhannei.baidu.com&#39;,
+            &#39;User-Agent&#39;:&#39;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36 Edge/15.15063&#39;&#125;
+    web_data = requests.get(url=url,headers=headers)
+    if &#39;200&#39; not in web_data:
+        print(&quot;访问失败，可能是禁了ip，当前访问页面状态码:%s&quot; % (web_data))
+    soup = BeautifulSoup(web_data.text,&#39;html.parser&#39;)
+    ips = soup.find_all(&#39;tr&#39;)
+    fhttp = open(&quot;HTTP_IP.txt&quot;,&#39;a&#39;)
+    fhttps = open(&quot;HTTPS_IP.txt&quot;,&#39;a&#39;)
+    fsocks = open(&quot;socks_IP.txt&quot;,&#39;a&#39;)
+    for i in range(1,len(ips)):
+        ip_info = ips[i]
+        tds = ip_info.find_all(&#39;td&#39;)
+        print(&quot;IP:&#123;&#125;    port:&#123;&#125;    noun:&#123;&#125;&quot;.format(tds[1].text,tds[2].text,tds[5].text))
+        item = str(tds[1].text) + &#39;,&#39; + str(tds[2].text) + &#39;,&#39; +str(tds[5].text) + &#39;\n&#39;
+        if &#39;HTTP&#39; in item and len(tds[5].text) == 4:
+            fhttp.write(item)
+        if &#39;HTTPS&#39; in item:
+            fhttps.write(item)
+        if &#39;socks4/5&#39; in item:
+            fsocks.write(item)
+    fhttp.close()
+    fhttps.close()
+    fsocks.close()
+
+
+
+
+if __name__==&quot;__main__&quot;:
+    if (os.path.exists(&quot;HTTP_IP.txt&quot;)):  #判断文件是否存在，存在返回True，否则返回False
+        os.remove(&quot;HTTP_IP.txt&quot;)  #删除存在的文件，为了追加的写入方式写入的数据不重复
+    if (os.path.exists(&quot;HTTPS_IP.txt&quot;)):  
+        os.remove(&quot;HTTPS_IP.txt&quot;)
+    if (os.path.exists(&quot;socks_IP.txt&quot;)):  
+        os.remove(&quot;socks_IP.txt&quot;)      #突然想到直接在这里就以w方式打开文件，就不需要考虑以追加的写入方式写入的数据重复的问题
+    for i in range(1,11):        #设爬取代理的范围
+        target_url = &quot;https://www.xicidaili.com/nn/&quot; + str(i) # 爬取代理的网站
+        get_ip_list(target_url)
+</code></pre>
+<hr>
+<h5 id="验证ip可用性"><a href="#验证ip可用性" class="headerlink" title="验证ip可用性"></a>验证ip可用性</h5><pre><code># -*- coding: utf-8 -*-
+
+import requests
+from queue import Queue
+import sys
+import threading
+import telnetlib
+
+
+class Check_IP(threading.Thread):
+
+
+    def __init__(self,queue):
+        threading.Thread.__init__(self)
+        self._queue = queue
+
+    def run(self):
+        global lines 
+        lines = [] 
+
+        while (not self._queue.empty()):    #只要队列不为空就继续从队列中取url路径
+            url = self._queue.get()
+            # print(url)
+
+            ip,port,types = url.split(&#39;,&#39;,3)
+
+            try :
+                telnetlib.Telnet(ip,port,timeout=6)        #超过6秒则判定为无效IP代理
+
+                # if r.status_code == 200 :
+                #     sys.stdout.write(&#39;[*] %s\n&#39; % url)    #显示状态码为200的url
+                print(&quot;%s可用&quot; % (url))
+                lines.append(url+&#39;\n&#39;)
+            except Exception:
+                print(&quot;%s不可用&quot; % (url))
+
+    def write_enable_ip():
+        fw = open(&quot;enable_ip\\enable_ip.txt&quot;,&#39;w&#39;)
+        for i in range(len(lines)):
+            fw.write(lines[i])
+        fw.close()            
+    
+        
+def start(txt,count):
+    queue = Queue()
+
+    fr = open(&#39;%s&#39; % txt,&#39;r&#39;,encoding=&#39;utf-8&#39;)    #按行读取文件内容
+    lines = fr.readlines()  
+    fr.close()
+    for line in lines:
+        ip,port,types= line.split(&#39;,&#39;,3)    #将ip、端口和类型读取并分别赋值
+        types = types.rstrip(&#39;\n&#39;)
+        queue.put(ip+&#39;,&#39;+port+&#39;,&#39;+types) 
+
+    threads = []
+    thread_count = int(count)
+
+    for i in range(thread_count):
+        threads.append(Check_IP(queue))
+
+    for t in threads:
+        t.start()
+
+    for t in threads:
+        t.join()    
+
+if __name__==&quot;__main__&quot;:
+    txt = &#39;HTTPS_IP.txt&#39;        #设置要验证的代理类型的文件
+    count = 8    #设定线程数
+    start(txt,count)
+    Check_IP.write_enable_ip()
+</code></pre>
+<p><a href="https://glunko.lanzous.com/ice8ugf">我是项目地址</a><br>password:<del>31ex</del></p>
+]]></content>
+      <tags>
+        <tag>ip代理池</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>文件改名那些事</title>
+    <url>/2020/05/08/wenjiangaiming/</url>
+    <content><![CDATA[<p>最近从xx音乐下载了一堆周杰伦的歌，发现后面有随机生成的数字，一个个重命名太慢了，只好写个py  </p>
+<span id="more"></span>
+<p>源码：<br>    import os<br>    import os.path<br>    import sys<br>    from string import digits<br>    etx=’.flac’<br>    read_file_dir = input(r’请输入要修改文件扩展名的路径：’)<br>    files = os.listdir(read_file_dir) # 列出当前目录下所有的文件<br>    for filename in files:<br>        portion = os.path.splitext(filename) # 分离文件名字和后缀<br>        remove_digits = str.maketrans(‘’, ‘’, digits)<br>        res = portion[0].translate(remove_digits) #去掉数字的前缀<br>        newname = res + etx #重新组合<br>        if  not any(char.isdigit() for char in newname): #去掉数字后做一个保存<br>            os.chdir(read_file_dir)<br>            os.rename(filename,newname)<br>        print(os.path.basename(filename)+’ -&gt; ‘+ os.path.basename(newname))</p>
+<hr>
+<p>在冲浪的时候看见的菜鸟教程的笔记，于是白嫖了:<br>    # 搜寻单层目录下的blv文件并将其转换为flv文件<br>    # 用于哔哩哔哩缓存视频blv格式转换后合并（本例程只是做个小小的扩展名转换）</p>
+<pre><code>import os
+import os.path
+
+ext_from = &#39;.blv&#39;
+ext_to = &#39;.flv&#39;
+
+read_file_dir = input(r&#39;请输入要修改文件扩展名的路径：&#39;)
+
+files = os.listdir(read_file_dir) # 列出当前目录下所有的文件
+
+for filename in files:
+    portion = os.path.splitext(filename) # 分离文件名字和后缀
+
+    if portion[1] ==ext_from:  #检测扩展名
+        newname = portion[0]+ext_to  #改新的新扩展名
+        os.chdir(read_file_dir)  
+        os.rename(filename,newname)
+        print(os.path.basename(filename)+&#39; -&gt; &#39;+ os.path.basename(newname))
+</code></pre>
+]]></content>
+      <tags>
+        <tag>文件重命名</tag>
+      </tags>
+  </entry>
+</search>
