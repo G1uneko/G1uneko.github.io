@@ -269,4 +269,23 @@ for filename in files:
         <tag>文件重命名</tag>
       </tags>
   </entry>
+  <entry>
+    <title>某3c代码审计</title>
+    <url>/2023/08/15/H3C_day01/</url>
+    <content><![CDATA[<h1 id="某网管系统任意文件读取代码审计"><a href="#某网管系统任意文件读取代码审计" class="headerlink" title="某网管系统任意文件读取代码审计"></a>某网管系统任意文件读取代码审计</h1><span id="more"></span>
+<h3 id="漏洞点："><a href="#漏洞点：" class="headerlink" title="漏洞点："></a>漏洞点：</h3><p>漏洞出现在sys_data_collect.mds这个文件，太菜了不知道为什么开发要这么写mds然后mod包含mds，然后php再引用mod文件，这里很明显file_name没有过滤直接拼接到目录下面，然后file_get_contents读取了文件再echo<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308150951962.png"></p>
+<p>我们再往上面找<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308150952459.png"></p>
+<p><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308150957174.png"></p>
+<p>可以看到在index这个php引用了这个文件，触发条件是$get_url_param == ‘sys_dia_data_down’，我们只需要控制这个值进入判断然后给file_name传参就行，其中get_url_param这个变量是来自前端传参，代码块如下：<br><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308150958074.png"></p>
+<h3 id="利用漏洞："><a href="#利用漏洞：" class="headerlink" title="利用漏洞："></a>利用漏洞：</h3><p>于是构造payload：</p>
+<figure class="highlight awk"><table><tr><td class="code"><pre><span class="line"><span class="regexp">/webui/i</span>ndex.php?file_name=..<span class="regexp">/../</span>..<span class="regexp">/../</span>..<span class="regexp">/etc/</span>passwd&amp;g=sys_dia_data_down</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308150958077.png"></p>
+<p><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202308150958076.png"></p>
+<p>利用成功，剩下一个rce 0day下次再写，已经好久没更新博客了，要勤快更新了，记录下学习过程</p>
+]]></content>
+      <tags>
+        <tag>web代码审计</tag>
+      </tags>
+  </entry>
 </search>
