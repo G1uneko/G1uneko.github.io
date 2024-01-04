@@ -495,4 +495,25 @@ for filename in files:
         <tag>ctf</tag>
       </tags>
   </entry>
+  <entry>
+    <title>python request库发包百分号会自动url编码问题</title>
+    <url>/2024/01/04/python%E9%97%AE%E9%A2%98/</url>
+    <content><![CDATA[<p>最近在写批量扫描的poc的时候遇到了一个洞，需要get这个地址看看是否存在做验证</p>
+<p>​<code>/setup/setup-s/%u002e%u002e/%u002e%u002e/log.jsp</code>​</p>
+<span id="more"></span>
+<p>写好request之后丢进去发现扫描半天一个都没有扫出来，加个burpsuite代理抓下包发现发过去的地址%自动被url编码成了%25</p>
+<p><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202401041549775.png"></p>
+<p>又很懒的用别的库，还以为是常见的问题结果网上解决方法都参差不齐，于是就只能改动下python库源码，经过调试发现在<code>\Lib\site-packages\requests\models.py:481</code>行把url重新编码了，只需要把这段代码注释就可以了</p>
+<p><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202401041549776.png"></p>
+<p><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202401041549777.png"></p>
+<p>问题解决！</p>
+<p>最后记录下vscode的调试需要自己加一个json配置，在运行-&gt;打开配置/添加配置</p>
+<p><img data-src="https://cdn.jsdelivr.net/gh/G1uneko/picture_blog@main/img/202401041549774.png"></p>
+<p>这个justMyCode默认是true，需要改成false才可以调试进入看到第三方库的源码</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="string">&quot;launch&quot;</span>: &#123;</span><br><span class="line">        <span class="string">&quot;configurations&quot;</span>: [</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="string">&quot;name&quot;</span>: <span class="string">&quot;Python: 当前文件&quot;</span>,</span><br><span class="line">                <span class="string">&quot;type&quot;</span>: <span class="string">&quot;python&quot;</span>,</span><br><span class="line">                <span class="string">&quot;request&quot;</span>: <span class="string">&quot;launch&quot;</span>,</span><br><span class="line">                <span class="string">&quot;program&quot;</span>: <span class="string">&quot;<span class="variable">$&#123;file&#125;</span>&quot;</span>,</span><br><span class="line">                <span class="string">&quot;console&quot;</span>: <span class="string">&quot;integratedTerminal&quot;</span>,</span><br><span class="line">                <span class="string">&quot;justMyCode&quot;</span>: <span class="literal">false</span></span><br><span class="line">            &#125;</span><br><span class="line">        ]</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+]]></content>
+      <tags>
+        <tag>python</tag>
+      </tags>
+  </entry>
 </search>
